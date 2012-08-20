@@ -9,18 +9,21 @@
 
 (ql:quickload :gauges)
 
-(defparameter api-key
-  (if (probe-file #p"~/.gauges.key")
-      (with-open-file (in #p"~/.gauges.key")
-        (with-standard-io-syntax
-          (string (read in))))
-      (if (sb-unix::posix-getenv "GAUGES_API_KEY")
-          (sb-unix::posix-getenv "GAUGES_API_KEY")
-          nil)))
+(defparameter *api-key* nil)
 
-(unless api-key
-  (format t "[!] cannot proceed without API key.~%")
-  (sb-ext:quit :unix-status 1))
+(defun get-api-key ()
+  (let ((api-key
+         (if (probe-file #p"~/.gauges.key")
+             (with-open-file (in #p"~/.gauges.key")
+               (with-standard-io-syntax
+                 (string (read in))))
+             (if (sb-unix::posix-getenv "GAUGES_API_KEY")
+                 (sb-unix::posix-getenv "GAUGES_API_KEY")
+                 nil))))
+    (unless api-key
+      (format t "[!] cannot proceed without API key.~%")
+      (sb-ext:quit :unix-status 1))
+    (setf *api-key* api-key)))
 
 (defun get-value (key lst)
   "Extract the value of key from an assoc-list lst"
@@ -58,7 +61,8 @@
           (people (all-time site))))
 
 (defun main ()
-  (gauges:authenticate api-key)
+  (get-api-key)
+  (gauges:authenticate *api-key*)
   (let ((gauges-data (cdar (gauges:gauges))))
     (when (equal '(:MESSAGE . "Authentication required") gauges-data)
       (abort))
